@@ -1,5 +1,6 @@
 from langchain_anthropic import ChatAnthropic
 from langchain_ollama import ChatOllama
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.agents import tool
 from rosa import ROSA
 from rosa.prompts import RobotSystemPrompts
@@ -321,8 +322,25 @@ def main():
                 num_ctx=32192,  # adjust based on your model's context window
                 base_url="http://160.85.252.236:11434",
             )
+        # else:
+        #     print("Using Anthropic API with Claude Sonnet 3.5")
+        #     # Read API key from file
+        #     try:
+        #         with open("/home/ros/rap/Gruppe2/api-key.txt", "r") as f:
+        #             # Skip the comment line if it exists
+        #             api_key = f.read().strip().split("\n")[-1]
+        #     except Exception as e:
+        #         print(f"Error reading API key: {e}")
+        #         return
+
+        #     llm = ChatAnthropic(
+        #         model="claude-3-5-sonnet-20240620",
+        #         temperature=0,
+        #         anthropic_api_key=api_key,
+        #         max_tokens=4096,
+        #     )
         else:
-            print("Using Anthropic API with Claude Sonnet 3.5")
+            print("using gemini to control")
             # Read API key from file
             try:
                 with open("/home/ros/rap/Gruppe2/api-key.txt", "r") as f:
@@ -332,10 +350,10 @@ def main():
                 print(f"Error reading API key: {e}")
                 return
 
-            llm = ChatAnthropic(
-                model="claude-3-5-sonnet-20240620",
+            llm = ChatGoogleGenerativeAI(
+                model="gemini-2.5-flash",
                 temperature=0,
-                anthropic_api_key=api_key,
+                google_api_key=api_key,
                 max_tokens=4096,
             )
     except Exception as e:

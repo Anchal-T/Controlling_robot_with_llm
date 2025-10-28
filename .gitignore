@@ -1,3 +1,5 @@
 api-key.txt
 **/__pycache__/
 *.ikcache
+build/
+rosa_summit.egg-info/
