@@ -3,3 +3,6 @@ api-key.txt
 *.ikcache
 build/
 rosa_summit.egg-info/
+Dockerfile.1
+install/
+log/

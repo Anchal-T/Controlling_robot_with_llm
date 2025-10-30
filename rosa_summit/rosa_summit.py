@@ -1,9 +1,8 @@
-from langchain_anthropic import ChatAnthropic
-from langchain_ollama import ChatOllama
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.agents import tool
-from rosa import ROSA
-from rosa.prompts import RobotSystemPrompts
+from langchain.agents import create_agent
+from langchain.tools import tool
+# from rosa import ROSA
+# from rosa.prompts import RobotSystemPrompts
 import os
 import pathlib
 import time
@@ -16,6 +15,7 @@ import rclpy
 from rclpy.action import ActionClient
 from rclpy.parameter import Parameter
 
+# keep globals
 node = None
 vel_publisher = None
 explore_publisher = None
@@ -310,75 +310,45 @@ def main():
         node, NavigateToPose, "/summit/navigate_to_pose"
     )
 
-    # Get the current username
-    user_name = os.getenv("USER")
-
+    # Always use Gemini (LangChain) for tool calling
     try:
-        if user_name == "ros":
-            print("Using remote Ollama instance")
-            llm = ChatOllama(
-                model="hhao/qwen2.5-coder-tools:latest",  # "gemma3:12b",  # or your preferred model
-                temperature=0,
-                num_ctx=32192,  # adjust based on your model's context window
-                base_url="http://160.85.252.236:11434",
-            )
-        # else:
-        #     print("Using Anthropic API with Claude Sonnet 3.5")
-        #     # Read API key from file
-        #     try:
-        #         with open("/home/ros/rap/Gruppe2/api-key.txt", "r") as f:
-        #             # Skip the comment line if it exists
-        #             api_key = f.read().strip().split("\n")[-1]
-        #     except Exception as e:
-        #         print(f"Error reading API key: {e}")
-        #         return
+        print("Using Gemini (LangChain) for tool calling")
+        with open("/home/ros/rap/Gruppe2/api-key.txt", "r") as f:
+            api_key = f.read().strip().split("\n")[-1]
 
-        #     llm = ChatAnthropic(
-        #         model="claude-3-5-sonnet-20240620",
-        #         temperature=0,
-        #         anthropic_api_key=api_key,
-        #         max_tokens=4096,
-        #     )
-        else:
-            print("using gemini to control")
-            # Read API key from file
-            try:
-                with open("/home/ros/rap/Gruppe2/api-key.txt", "r") as f:
-                    # Skip the comment line if it exists
-                    api_key = f.read().strip().split("\n")[-1]
-            except Exception as e:
-                print(f"Error reading API key: {e}")
-                return
-
-            llm = ChatGoogleGenerativeAI(
-                model="gemini-2.5-flash",
-                temperature=0,
-                google_api_key=api_key,
-                max_tokens=4096,
-            )
+        llm = ChatGoogleGenerativeAI(
+            model="gemini-2.5-flash",
+            temperature=0,
+            google_api_key=api_key,
+            max_tokens=4096,
+        )
     except Exception as e:
         print(f"Error initializing LLM: {e}")
         return
 
-    prompt = RobotSystemPrompts()
-    prompt.embodiment = "You are an helpful robot named Summit, designed to assist users in a simulated environment. You can navigate, explore, and interact with the environment using various tools."
+    # Define the agent with tools and a system prompt
+    system_prompt = (
+        "You are a helpful robot named Summit in a simulated environment. "
+        "Use the provided tools to navigate, explore, save/list maps, and move to named locations. "
+        "Call tools with correct arguments. Ask for clarification if inputs are missing."
+    )
 
-    # Pass the LLM to ROSA with both tools available
-    agent = ROSA(
-        ros_version=2,
-        llm=llm,
-        tools=[
-            send_vel,
-            stop,
-            toggle_auto_exploration,
-            navigate_to_pose,
-            navigate_relative,
-            save_map,
-            list_saved_maps,
-            get_location_names,
-            navigate_to_location_by_name,
-        ],
-        prompts=prompt,
+    tools = [
+        send_vel,
+        stop,
+        toggle_auto_exploration,
+        navigate_to_pose,
+        navigate_relative,
+        save_map,
+        list_saved_maps,
+        get_location_names,
+        navigate_to_location_by_name,
+    ]
+
+    agent = create_agent(
+        model=llm,
+        tools=tools,
+        system_prompt=system_prompt,
     )
 
     print("Type 'exit' or 'quit' to end the program")
@@ -391,18 +361,31 @@ def main():
 
             try:
                 print("Request sent")
-                res = agent.invoke(msg)[0]
-                if isinstance(res, dict) and "text" in res:
-                    print(res["text"])
+                res = agent.invoke({"messages": [{"role": "user", "content": msg}]})
+                # Handle common return shapes
+                if isinstance(res, dict):
+                    if "output" in res:
+                        print(res["output"])
+                    elif "final_output" in res:
+                        print(res["final_output"])
+                    elif "messages" in res and res["messages"]:
+                        last = res["messages"][-1]
+                        print(getattr(last, "content", str(last)))
+                    else:
+                        print(res)
                 else:
-                    print(res)
+                    print(getattr(res, "content", str(res)))
             except Exception as e:
                 print(f"An error occurred: {e}")
     except KeyboardInterrupt:
         print("\nProgram terminated by user")
-
-    agent.shutdown()
-    print("Bye from rosa_summit.")
+    finally:
+        try:
+            node.destroy_node()
+        except Exception:
+            pass
+        rclpy.shutdown()
+        print("Bye from rosa_summit.")
 
 
 if __name__ == "__main__":
