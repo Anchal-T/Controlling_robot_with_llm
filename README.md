@@ -63,7 +63,7 @@ All required ROS 2 packages and Python libraries are automatically installed whe
   - **Important:** The `map_merge` sub-package within `m-explore-ros2` is automatically removed by the `init.sh` script. This package is not required for the current setup and has compatibility issues with ROS 2 Jazzy.
   - The `icclab_summit_xl` package, which provides the Summit XL robot simulation and Nav2 integration, is expected to be already installed in your ROS 2 workspace or will be resolved by `rosdep`.
 - **Python Packages:**
-  - Installs or upgrades necessary Python libraries for ROSA and the LLM interaction, including `jpl-rosa`, `langchain-ollama`, `langchain-core`, `pydantic`, `anthropic`, and `langchain-anthropic`.
+  - Installs or upgrades necessary Python libraries for ROSA and the LLM interaction, including `jpl-rosa`, `langchain-ollama`, `langchain-core`, `pydantic`, `anthropic`, `langchain-anthropic`, `langchain-google-genai`.
 - **Gazebo Models:**
   - Sets the `GZ_SIM_RESOURCE_PATH` environment variable to include the custom Gazebo models used in the simulation world.
 
